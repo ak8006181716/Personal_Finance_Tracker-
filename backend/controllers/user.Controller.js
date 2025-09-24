@@ -36,8 +36,8 @@ const registerUser = asyncHandler(async (req, res) => {
 
     const option = {
       httpOnly: true,
-      secure:true,
-     
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     };
     return res
       .status(201)
@@ -87,8 +87,8 @@ const loginUser = asyncHandler( async(req,res)=>{
 
     const option = {
       httpOnly: true,
-      secure: true,
-     
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     };
     return res
       .status(200)
