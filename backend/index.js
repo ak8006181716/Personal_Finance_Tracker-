@@ -13,7 +13,7 @@ dotenv.config();
 const app = express();
 
 // CORS configuration (allow frontend origin with credentials for cookies)
-const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
+const allowedOrigin = process.env.FRONTEND_URL || 'http://localhost:3000';
 app.use(cors({
     origin: allowedOrigin,
     credentials: true,
