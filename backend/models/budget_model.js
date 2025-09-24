@@ -2,9 +2,10 @@ import mongoose from "mongoose";
 
 const budgetSchema = mongoose.Schema(
   {
-    userid: {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      required: true,
     },
     category: {
       type: String,

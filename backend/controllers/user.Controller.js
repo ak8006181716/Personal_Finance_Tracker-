@@ -3,14 +3,19 @@ import ApiError from "../utils/ApiError.js";
 import bcrypt from "bcryptjs";
 import cookieParser from "cookie-parser";
 import ApiResponse from "../utils/ApiResponse.js";
+import jwt from'jsonwebtoken';
+import { asyncHandler } from "../utils/asyncHandler.js";
 
-const registerUser = async (req, res) => {
+
+
+const registerUser = asyncHandler(async (req, res) => {
   try {
     const { name, email, password } = req.body;
     if (!(email && password))
       throw new ApiError(400, "Email and Password both needed");
     let user = await User.findOne({ email });
-    if (user) throw new ApiError("User exists");
+    if (user) throw new ApiError(402,"user exsist")
+    
     const passwordHash = await bcrypt.hash(password, 10);
     user = await User.create({
       name: name,
@@ -24,17 +29,19 @@ const registerUser = async (req, res) => {
         expiresIn: "7d",
       }
     );
-    const userWithoutPassword = await User.findBYId(user._id).select(
+    const userWithoutPassword = await User.findById(user._id).select(
       "-password"
     );
+    if(!userWithoutPassword) throw new ApiError(404,"user not created");
 
     const option = {
       httpOnly: true,
-      Secure: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: "lax"
     };
     return res
       .status(201)
-      .cookie("Access token", token, option)
+      .cookie("AccessToken", token, option)
       .json(
         new ApiResponse(
           201,
@@ -43,14 +50,18 @@ const registerUser = async (req, res) => {
         )
       );
   } catch (error) {
-    return ApiError(401, "Error in register user ");
+    console.log(error);
+    const status = error?.statusCode || 400;
+    return res.status(status).json(new ApiResponse(status, null, error?.message || "Error in register user"));
+    
   }
-};
+});
 
-const loginUser = async(req,res)=>{
+const loginUser = asyncHandler( async(req,res)=>{
     const {email,password}= req.body;
+    console.log(email,password)
 
-    let user = User.findOne({email});
+    let user = await User.findOne({email});
     if(!user) throw new ApiError(400, "User is not found");
 
     const checkPassword= await bcrypt.compare(password,user.password);
@@ -61,7 +72,7 @@ const loginUser = async(req,res)=>{
             _id:user._id,
             email: email
         },
-        JWT_SECRET,
+        process.env.JWT_SECRET,
         {
             expiresIn:"7d"
         }
@@ -70,43 +81,56 @@ const loginUser = async(req,res)=>{
     if(!token) throw new ApiError(400,"Error in creating jwt token");
 
 
-    const userWithoutPassword = await User.findBYId(user._id).select(
+    const userWithoutPassword = await User.findById(user._id).select(
       "-password"
     );
 
     const option = {
       httpOnly: true,
-      Secure: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: "lax",
     };
     return res
-      .status(201)
-      .cookie("Access token", token, option)
+      .status(200)
+      .cookie("AccessToken", token, option)
       .json(
         new ApiResponse(
-          201,
+          200,
           { user: userWithoutPassword, token },
-          "user register Successful"
+          "user login Successful"
         )
       );
-}
+})
 
-const logoutUser= async(req,res)=>{
-
+const logoutUser= asyncHandler(async(req,res)=>{
     const option = {
       httpOnly: true,
-      Secure: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: "lax",
     };
 
-    return res.status(201)
-            .clearCookie("Access Token",option)
-            .json(new ApiResponse(201,"User logged out successfully"))
+    res.clearCookie("AccessToken", option);
+    return res.status(200).json(new ApiResponse(200, null, "User logged out successfully"));
+})
 
+const getUserProfile = asyncHandler(async(req,res)=>{
+    // Get user from request (assumes authentication middleware sets req.user)
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) {
+        throw new ApiError(401, "Unauthorized: User not authenticated");
+    }
 
-}
+    const user = await User.findById(userId).select("-password");
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
 
+    return res.status(200).json(new ApiResponse(200, { user }, "User profile fetched successfully"));
+})
 
 export {
     registerUser,
     loginUser,
-    logoutUser
+    logoutUser,
+    getUserProfile
 }

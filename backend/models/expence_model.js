@@ -2,9 +2,15 @@ import mongoose from "mongoose";
 
 const expenseSchema = mongoose.Schema(
   {
-    userid: {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      required: true,
+    },
+    amount: {
+      type: Number,
+      required: true,
+      min: 0,
     },
     category: {
       type: String,
@@ -12,11 +18,11 @@ const expenseSchema = mongoose.Schema(
     },
     date: {
       type: Date,
-      required: true,
+      default: Date.now,
     },
     paymentMethod: {
       type: String,
-      required: true,
+      required: false,
     },
     notes: {
       type: String,
